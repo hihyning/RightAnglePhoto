@@ -95,6 +95,47 @@ src/
 - Android Chrome 90+
 - Requires camera access and WebAssembly support
 
+## Deployment to GitHub Pages
+
+This project is configured for automatic deployment to GitHub Pages.
+
+### Quick Setup
+
+1. **Enable GitHub Pages:**
+   - Go to your repository → **Settings** → **Pages**
+   - Under **Source**, select **GitHub Actions**
+   - Save
+
+2. **Push to main:**
+   - Push your code to the `main` branch
+   - GitHub Actions will automatically build and deploy
+   - Your site will be live at: `https://[your-username].github.io/RightAnglePhoto/`
+
+### Important: Repository Name
+
+If your repository has a **different name** than `RightAnglePhoto`, update the base path in `vite.config.ts`:
+
+```typescript
+base: process.env.NODE_ENV === 'production' ? '/YourRepoName/' : '/',
+```
+
+### Manual Deployment
+
+```bash
+npm run build
+npm install -D gh-pages
+npm run deploy
+```
+
+### Testing Production Build Locally
+
+```bash
+npm run build
+npm run preview
+```
+
+See `DEPLOY.md` for detailed deployment instructions.
+
 ## License
 
 MIT

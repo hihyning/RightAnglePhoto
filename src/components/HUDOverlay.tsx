@@ -163,73 +163,98 @@ export function HUDOverlay({
       ctx.fillText(`Pose: ${Math.round(matchPercent * 100)}%`, meterX, meterY - 5);
     }
 
-    // Draw skeleton (when toggle is enabled)
+    // Draw skeleton wireframe (when toggle is enabled)
     if (showSkeleton && landmarks) {
-      // Draw all major body connections
+      // MediaPipe Pose full body connections (standard skeleton structure)
       const connections = [
-        // Face
-        [POSE_LANDMARKS.LEFT_EYE, POSE_LANDMARKS.RIGHT_EYE],
+        // Face connections
+        [POSE_LANDMARKS.LEFT_EYE_INNER, POSE_LANDMARKS.RIGHT_EYE_INNER],
+        [POSE_LANDMARKS.LEFT_EYE, POSE_LANDMARKS.LEFT_EYE_INNER],
+        [POSE_LANDMARKS.LEFT_EYE, POSE_LANDMARKS.LEFT_EYE_OUTER],
+        [POSE_LANDMARKS.LEFT_EYE_OUTER, POSE_LANDMARKS.LEFT_EAR],
+        [POSE_LANDMARKS.RIGHT_EYE, POSE_LANDMARKS.RIGHT_EYE_INNER],
+        [POSE_LANDMARKS.RIGHT_EYE, POSE_LANDMARKS.RIGHT_EYE_OUTER],
+        [POSE_LANDMARKS.RIGHT_EYE_OUTER, POSE_LANDMARKS.RIGHT_EAR],
         [POSE_LANDMARKS.LEFT_EYE, POSE_LANDMARKS.NOSE],
         [POSE_LANDMARKS.RIGHT_EYE, POSE_LANDMARKS.NOSE],
-        [POSE_LANDMARKS.LEFT_EAR, POSE_LANDMARKS.LEFT_EYE],
-        [POSE_LANDMARKS.RIGHT_EAR, POSE_LANDMARKS.RIGHT_EYE],
-        // Upper body
+        [POSE_LANDMARKS.MOUTH_LEFT, POSE_LANDMARKS.MOUTH_RIGHT],
+        [POSE_LANDMARKS.NOSE, POSE_LANDMARKS.MOUTH_LEFT],
+        [POSE_LANDMARKS.NOSE, POSE_LANDMARKS.MOUTH_RIGHT],
+        
+        // Torso (shoulders to hips)
         [POSE_LANDMARKS.LEFT_SHOULDER, POSE_LANDMARKS.RIGHT_SHOULDER],
-        [POSE_LANDMARKS.LEFT_SHOULDER, POSE_LANDMARKS.LEFT_ELBOW],
-        [POSE_LANDMARKS.LEFT_ELBOW, POSE_LANDMARKS.LEFT_WRIST],
-        [POSE_LANDMARKS.RIGHT_SHOULDER, POSE_LANDMARKS.RIGHT_ELBOW],
-        [POSE_LANDMARKS.RIGHT_ELBOW, POSE_LANDMARKS.RIGHT_WRIST],
         [POSE_LANDMARKS.LEFT_SHOULDER, POSE_LANDMARKS.LEFT_HIP],
         [POSE_LANDMARKS.RIGHT_SHOULDER, POSE_LANDMARKS.RIGHT_HIP],
-        // Torso
         [POSE_LANDMARKS.LEFT_HIP, POSE_LANDMARKS.RIGHT_HIP],
-        // Lower body
+        
+        // Left arm
+        [POSE_LANDMARKS.LEFT_SHOULDER, POSE_LANDMARKS.LEFT_ELBOW],
+        [POSE_LANDMARKS.LEFT_ELBOW, POSE_LANDMARKS.LEFT_WRIST],
+        [POSE_LANDMARKS.LEFT_WRIST, POSE_LANDMARKS.LEFT_INDEX],
+        [POSE_LANDMARKS.LEFT_WRIST, POSE_LANDMARKS.LEFT_PINKY],
+        [POSE_LANDMARKS.LEFT_INDEX, POSE_LANDMARKS.LEFT_THUMB],
+        [POSE_LANDMARKS.LEFT_PINKY, POSE_LANDMARKS.LEFT_THUMB],
+        
+        // Right arm
+        [POSE_LANDMARKS.RIGHT_SHOULDER, POSE_LANDMARKS.RIGHT_ELBOW],
+        [POSE_LANDMARKS.RIGHT_ELBOW, POSE_LANDMARKS.RIGHT_WRIST],
+        [POSE_LANDMARKS.RIGHT_WRIST, POSE_LANDMARKS.RIGHT_INDEX],
+        [POSE_LANDMARKS.RIGHT_WRIST, POSE_LANDMARKS.RIGHT_PINKY],
+        [POSE_LANDMARKS.RIGHT_INDEX, POSE_LANDMARKS.RIGHT_THUMB],
+        [POSE_LANDMARKS.RIGHT_PINKY, POSE_LANDMARKS.RIGHT_THUMB],
+        
+        // Left leg
         [POSE_LANDMARKS.LEFT_HIP, POSE_LANDMARKS.LEFT_KNEE],
         [POSE_LANDMARKS.LEFT_KNEE, POSE_LANDMARKS.LEFT_ANKLE],
+        [POSE_LANDMARKS.LEFT_ANKLE, POSE_LANDMARKS.LEFT_HEEL],
+        [POSE_LANDMARKS.LEFT_ANKLE, POSE_LANDMARKS.LEFT_FOOT_INDEX],
+        [POSE_LANDMARKS.LEFT_HEEL, POSE_LANDMARKS.LEFT_FOOT_INDEX],
+        
+        // Right leg
         [POSE_LANDMARKS.RIGHT_HIP, POSE_LANDMARKS.RIGHT_KNEE],
         [POSE_LANDMARKS.RIGHT_KNEE, POSE_LANDMARKS.RIGHT_ANKLE],
-        // Feet
-        [POSE_LANDMARKS.LEFT_ANKLE, POSE_LANDMARKS.LEFT_HEEL],
         [POSE_LANDMARKS.RIGHT_ANKLE, POSE_LANDMARKS.RIGHT_HEEL],
-        [POSE_LANDMARKS.LEFT_HEEL, POSE_LANDMARKS.LEFT_FOOT_INDEX],
+        [POSE_LANDMARKS.RIGHT_ANKLE, POSE_LANDMARKS.RIGHT_FOOT_INDEX],
         [POSE_LANDMARKS.RIGHT_HEEL, POSE_LANDMARKS.RIGHT_FOOT_INDEX],
       ];
 
-      // Draw connections
-      ctx.strokeStyle = 'rgba(0, 255, 255, 0.8)';
-      ctx.lineWidth = 3;
+      // Draw wireframe connections with white/cyan lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
       connections.forEach(([startIdx, endIdx]) => {
         const start = landmarks[startIdx];
         const end = landmarks[endIdx];
 
-        if (start && end && start.visibility && start.visibility > 0.2 && end.visibility && end.visibility > 0.2) {
+        if (start && end && start.visibility && start.visibility > 0.3 && end.visibility && end.visibility > 0.3) {
+          const startX = start.x * canvas.width;
+          const startY = start.y * canvas.height;
+          const endX = end.x * canvas.width;
+          const endY = end.y * canvas.height;
+          
           ctx.beginPath();
-          ctx.moveTo(start.x * canvas.width, start.y * canvas.height);
-          ctx.lineTo(end.x * canvas.width, end.y * canvas.height);
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(endX, endY);
           ctx.stroke();
         }
       });
 
-      // Draw all keypoints
-      landmarks.forEach((lm, idx) => {
-        if (lm && lm.visibility && lm.visibility > 0.2) {
-          // Different colors for different body parts
-          if (idx <= POSE_LANDMARKS.RIGHT_EAR) {
-            ctx.fillStyle = 'rgba(255, 200, 0, 0.9)'; // Face - yellow
-          } else if (idx <= POSE_LANDMARKS.RIGHT_WRIST) {
-            ctx.fillStyle = 'rgba(0, 255, 255, 0.9)'; // Upper body - cyan
-          } else if (idx <= POSE_LANDMARKS.RIGHT_HIP) {
-            ctx.fillStyle = 'rgba(255, 0, 255, 0.9)'; // Torso - magenta
-          } else {
-            ctx.fillStyle = 'rgba(0, 255, 0, 0.9)'; // Lower body - green
-          }
+      // Draw keypoints as small white circles
+      landmarks.forEach((lm) => {
+        if (lm && lm.visibility && lm.visibility > 0.3) {
+          const x = lm.x * canvas.width;
+          const y = lm.y * canvas.height;
           
+          // Draw keypoint as a small white circle
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
           ctx.beginPath();
-          ctx.arc(lm.x * canvas.width, lm.y * canvas.height, 6, 0, 2 * Math.PI);
+          ctx.arc(x, y, 4, 0, 2 * Math.PI);
           ctx.fill();
           
-          // Draw outline
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+          // Optional: subtle outline
+          ctx.strokeStyle = 'rgba(0, 200, 255, 0.8)';
           ctx.lineWidth = 1;
           ctx.stroke();
         }
