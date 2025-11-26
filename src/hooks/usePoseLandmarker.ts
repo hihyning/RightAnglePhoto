@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { PoseLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
-import { type Landmark, type PoseDetection } from '../types/pose';
+import { type PoseDetection } from '../types/pose';
 
 const TARGET_FPS = 12; // Throttle to ~12 FPS for performance
 const FRAME_INTERVAL = 1000 / TARGET_FPS;

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { type PhotoRecord, getAllPhotos, deletePhoto } from '../utils/indexedDB';
+import { useState } from 'react';
+import { type PhotoRecord, deletePhoto } from '../utils/indexedDB';
 
 interface GalleryProps {
   photos: PhotoRecord[];
@@ -76,7 +76,7 @@ export function Gallery({ photos, onClose, onPhotoDelete }: GalleryProps) {
           >
             Download
           </button>
-          {navigator.share && (
+          {'share' in navigator && (
             <button
               onClick={() => handleShare(selectedPhoto)}
               className="gallery-action-button gallery-action-share"

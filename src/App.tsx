@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CameraView } from './components/CameraView';
 import { HUDOverlay } from './components/HUDOverlay';
 import { Gallery } from './components/Gallery';
 import { usePoseLandmarker } from './hooks/usePoseLandmarker';
-import { poseTemplates, getPoseTemplate, type PoseTemplate } from './data/poseTemplates';
+import { poseTemplates, type PoseTemplate } from './data/poseTemplates';
 import {
   normalizePose,
   computeCenterOffset,

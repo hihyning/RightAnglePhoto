@@ -1,4 +1,4 @@
-import { type Landmark, type NormalizedPose, type PoseGuidance, POSE_LANDMARKS } from '../types/pose';
+import { type Landmark, type NormalizedPose, POSE_LANDMARKS } from '../types/pose';
 
 /**
  * Normalize pose landmarks to center at hip midpoint and scale by body height
