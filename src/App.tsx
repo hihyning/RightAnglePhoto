@@ -212,9 +212,32 @@ function App() {
     setIsCapturing(true);
 
     try {
+      const videoWidth = videoElement.videoWidth;
+      const videoHeight = videoElement.videoHeight;
+      const videoAspect = videoWidth / videoHeight;
+      const targetAspect = 4 / 5; // 4:5 aspect ratio
+
+      // Calculate crop dimensions to get 4:5 aspect ratio
+      let cropWidth, cropHeight, cropX, cropY;
+
+      if (videoAspect > targetAspect) {
+        // Video is wider than 4:5, crop width
+        cropHeight = videoHeight;
+        cropWidth = videoHeight * targetAspect; // height * (4/5)
+        cropX = (videoWidth - cropWidth) / 2; // Center horizontally
+        cropY = 0;
+      } else {
+        // Video is taller than 4:5, crop height
+        cropWidth = videoWidth;
+        cropHeight = videoWidth / targetAspect; // width / (4/5) = width * 1.25
+        cropX = 0;
+        cropY = (videoHeight - cropHeight) / 2; // Center vertically
+      }
+
+      // Create canvas with 4:5 aspect ratio
       const canvas = document.createElement('canvas');
-      canvas.width = videoElement.videoWidth;
-      canvas.height = videoElement.videoHeight;
+      canvas.width = cropWidth;
+      canvas.height = cropHeight;
 
       const ctx = canvas.getContext('2d');
       if (!ctx) {
@@ -222,7 +245,12 @@ function App() {
         return;
       }
 
-      ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+      // Draw cropped portion of video to canvas
+      ctx.drawImage(
+        videoElement,
+        cropX, cropY, cropWidth, cropHeight, // Source rectangle (crop from video)
+        0, 0, cropWidth, cropHeight // Destination rectangle (full canvas)
+      );
 
       canvas.toBlob(async (blob) => {
         if (!blob) {

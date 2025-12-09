@@ -293,6 +293,7 @@ body {
   background-color: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
+  padding-top: 1.5rem;
 }
 
 /* Pose Selector */
@@ -513,7 +514,7 @@ body {
 }
 
 .gallery-thumbnail-button {
-  aspect-ratio: 1;
+  aspect-ratio: 4 / 5; /* 4:5 aspect ratio */
   background-color: #1f2937;
   border-radius: 0.25rem;
   overflow: hidden;
@@ -541,6 +542,7 @@ body {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+  aspect-ratio: 4 / 5; /* Maintain 4:5 aspect ratio */
 }
 
 /* Gallery Actions */
@@ -812,7 +814,7 @@ body {
 /* Bottom-left pose gallery icon button */
 .pose-gallery-icon-button {
   position: fixed;
-  bottom: 1rem;
+  bottom: 4rem; /* Align center with shutter button center (2rem padding + 2rem half button height) */
   left: 1rem;
   width: 48px;
   height: 48px;
@@ -828,6 +830,7 @@ body {
   justify-content: center;
   z-index: 25;
   transition: all 0.2s;
+  transform: translateY(50%); /* Center the button on the calculated position */
 }
 
 .pose-gallery-icon-button:hover {

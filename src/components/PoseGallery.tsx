@@ -41,3 +41,4 @@ export function PoseGallery({ templates, onSelectTemplate, onClose }: PoseGaller
     </div>
   );
 }
+

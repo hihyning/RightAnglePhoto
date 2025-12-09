@@ -105,27 +105,8 @@ export function HUDOverlay({
       ctx.save();
       ctx.globalAlpha = 0.3; // 30% opacity
       
-      // Calculate size to fit within viewport while maintaining aspect ratio
-      const imgAspect = img.width / img.height;
-      const viewportAspect = viewportWidth / viewportHeight;
-      
-      let drawWidth, drawHeight, drawX, drawY;
-      
-      if (imgAspect > viewportAspect) {
-        // Image is wider - fit to width
-        drawWidth = viewportWidth;
-        drawHeight = viewportWidth / imgAspect;
-        drawX = 0;
-        drawY = (viewportHeight - drawHeight) / 2;
-      } else {
-        // Image is taller - fit to height
-        drawHeight = viewportHeight;
-        drawWidth = viewportHeight * imgAspect;
-        drawX = (viewportWidth - drawWidth) / 2;
-        drawY = 0;
-      }
-      
-      ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+      // Fill entire camera frame area (no aspect ratio constraints)
+      ctx.drawImage(img, 0, 0, viewportWidth, viewportHeight);
       ctx.restore();
 
       // Draw template skeleton on the overlay if enabled
@@ -196,11 +177,11 @@ export function HUDOverlay({
           const end = templateLandmarks[endIdx];
 
           if (start && end && start.visibility && start.visibility > 0.1 && end.visibility && end.visibility > 0.1) {
-            // Landmarks are normalized (0-1), so multiply by draw dimensions
-            const startX = drawX + (start.x * drawWidth);
-            const startY = drawY + (start.y * drawHeight);
-            const endX = drawX + (end.x * drawWidth);
-            const endY = drawY + (end.y * drawHeight);
+            // Landmarks are normalized (0-1), so multiply by viewport dimensions
+            const startX = start.x * viewportWidth;
+            const startY = start.y * viewportHeight;
+            const endX = end.x * viewportWidth;
+            const endY = end.y * viewportHeight;
             
             ctx.beginPath();
             ctx.moveTo(startX, startY);
@@ -213,9 +194,9 @@ export function HUDOverlay({
         // Draw keypoints
         templateLandmarks.forEach((lm, idx) => {
           if (lm && lm.visibility && lm.visibility > 0.1) {
-            // Landmarks are normalized (0-1), so multiply by draw dimensions
-            const x = drawX + (lm.x * drawWidth);
-            const y = drawY + (lm.y * drawHeight);
+            // Landmarks are normalized (0-1), so multiply by viewport dimensions
+            const x = lm.x * viewportWidth;
+            const y = lm.y * viewportHeight;
             
             if (idx <= POSE_LANDMARKS.RIGHT_EAR) {
               ctx.fillStyle = '#FFFF00';
@@ -462,35 +443,6 @@ export function HUDOverlay({
       const levelMetrics = ctx.measureText(levelText);
       const levelX = tiltX - (levelMetrics.width * (isMobile ? 0.8 : 1) + (levelText.length - 1) * 0.5) / 2;
       fillTextCompressed(ctx, levelText, levelX, tiltY + 30, 0.5, isMobile);
-    }
-
-    // Draw pose match meter
-    if (template && guidance.poseMatch > 0) {
-      const meterX = 20;
-      const meterY = canvas.height - 80;
-      const meterWidth = 200;
-      const meterHeight = 20;
-
-      // Background
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-      ctx.fillRect(meterX, meterY, meterWidth, meterHeight);
-
-      // Fill
-      const matchPercent = guidance.poseMatch;
-      ctx.fillStyle = matchPercent > 0.7 ? 'rgba(100, 255, 100, 0.8)' : 'rgba(255, 200, 0, 0.8)';
-      ctx.fillRect(meterX, meterY, meterWidth * matchPercent, meterHeight);
-
-      // Border
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(meterX, meterY, meterWidth, meterHeight);
-
-      // Text
-      ctx.fillStyle = 'white';
-      const isMobile = isMobileDevice();
-      ctx.font = isMobile ? '12px Arial, sans-serif' : '12px "Arial Narrow", Arial, sans-serif';
-      const poseText = `Pose: ${Math.round(matchPercent * 100)}%`;
-      fillTextCompressed(ctx, poseText, meterX, meterY - 5, 0.5, isMobile);
     }
   }, [landmarks, guidance, template, videoElement, viewportWidth, viewportHeight, showSkeleton, templateImageUrl, templateLandmarks, showTemplateOverlay, showTemplateSkeleton]);
 
