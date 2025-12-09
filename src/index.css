@@ -105,6 +105,10 @@ body {
   padding: 0.25rem 1rem;
 }
 
+.top-bar-spacer {
+  flex: 1;
+}
+
 .top-bar-actions {
   display: flex;
   gap: 0.5rem;
@@ -130,22 +134,39 @@ body {
   background-color: rgba(255, 255, 255, 0.2);
   border-radius: 0.5rem;
   font-size: 0.875rem;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
   color: #fff;
   cursor: pointer;
   position: relative;
+  transition: all 0.2s;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .gallery-button:hover {
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: rgba(0, 255, 255, 0.2);
+  border-color: rgba(0, 255, 255, 0.4);
+  color: #00FFFF;
+}
+
+.gallery-button-bottom {
+  padding-bottom: 2rem;
+}
+
+.gallery-button-container {
+  display: flex;
+  align-items: center;
+  padding-bottom: 2rem;
 }
 
 .gallery-badge {
   position: absolute;
   top: -8px;
   right: -8px;
-  background-color: #ff4444;
-  color: #fff;
+  background-color: #00FFFF; /* Neon blue */
+  color: #000;
   border-radius: 50%;
   min-width: 20px;
   height: 20px;
@@ -243,7 +264,7 @@ body {
   top: 5rem;
   left: 0;
   right: 0;
-  z-index: 30;
+  z-index: 100; /* Higher than bars (z-index 20) */
   pointer-events: none;
 }
 
@@ -258,6 +279,7 @@ body {
   display: inline-block;
   font-size: 0.875rem;
   font-weight: 500;
+  color: #00FFFF; /* Neon blue */
 }
 
 /* No Person Message */
@@ -268,19 +290,24 @@ body {
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  z-index: 30;
+  z-index: 100; /* Higher than bars (z-index 20) */
 }
 
 .no-person-message {
   background-color: rgba(0, 0, 0, 0.5);
-  color: #fff;
+  color: #00FFFF; /* Neon blue */
   padding: 0.5rem 1rem;
   border-radius: 0.25rem;
+  text-align: center;
+  width: auto;
+  margin: 0 auto;
 }
 
 .no-person-message p {
   font-size: 0.875rem;
   margin: 0;
+  text-align: center;
+  width: 100%;
 }
 
 /* Bottom Controls */
@@ -289,11 +316,17 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 20;
+  z-index: 30; /* Higher z-index to ensure buttons are clickable */
   background-color: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   padding-top: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  pointer-events: auto;
 }
 
 /* Pose Selector */
@@ -334,7 +367,10 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
+  flex: 1;
   padding-bottom: 2rem;
+  position: relative;
+  pointer-events: auto;
 }
 
 .shutter-button {
@@ -346,6 +382,12 @@ body {
   transition: transform 0.1s, background-color 0.2s, border-color 0.2s;
   padding: 0;
   position: relative;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  z-index: 21;
+  pointer-events: auto;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .shutter-button:active {
@@ -580,13 +622,14 @@ body {
 }
 
 .gallery-action-share {
-  background-color: #2563eb;
-  color: #fff;
+  background-color: #00FFFF; /* Neon blue */
+  color: #000;
 }
 
 .gallery-action-delete {
-  background-color: #dc2626;
+  background-color: rgba(255, 255, 255, 0.2); /* Light background instead of red */
   color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 /* Utility Classes */
@@ -701,7 +744,7 @@ body {
   bottom: 0;
   left: 0;
   pointer-events: none;
-  z-index: 15;
+  z-index: 100; /* Higher than bars (z-index 20) */
 }
 
 /* Pose Gallery Modal */
@@ -811,38 +854,32 @@ body {
   margin: 0;
 }
 
-/* Bottom-left pose gallery icon button */
-.pose-gallery-icon-button {
-  position: fixed;
-  bottom: 4rem; /* Align center with shutter button center (2rem padding + 2rem half button height) */
-  left: 1rem;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
+/* Bottom-left pose gallery button */
+.pose-gallery-button-container {
+  display: flex;
+  align-items: center;
+  padding-bottom: 2rem;
+}
+
+.pose-gallery-button {
+  padding: 0.375rem 0.75rem;
   background-color: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
   border: 1px solid rgba(255, 255, 255, 0.3);
   color: #fff;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 25;
   transition: all 0.2s;
-  transform: translateY(50%); /* Center the button on the calculated position */
+  font-family: "Arial Narrow", Arial, sans-serif;
+  font-stretch: ultra-condensed;
 }
 
-.pose-gallery-icon-button:hover {
-  background-color: rgba(255, 255, 255, 0.3);
-  transform: scale(1.1);
+.pose-gallery-button:hover {
+  background-color: rgba(0, 255, 255, 0.2);
+  border-color: rgba(0, 255, 255, 0.4);
+  color: #00FFFF;
 }
 
-.pose-gallery-icon-button:active {
-  transform: scale(0.95);
-}
-
-.pose-gallery-icon-button svg {
-  width: 24px;
-  height: 24px;
+.pose-gallery-button:active {
+  background-color: rgba(0, 255, 255, 0.3);
 }

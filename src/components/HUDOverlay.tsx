@@ -105,8 +105,27 @@ export function HUDOverlay({
       ctx.save();
       ctx.globalAlpha = 0.3; // 30% opacity
       
-      // Fill entire camera frame area (no aspect ratio constraints)
-      ctx.drawImage(img, 0, 0, viewportWidth, viewportHeight);
+      // Maintain 4:5 aspect ratio of template image while filling frame
+      const imgAspect = img.width / img.height; // Should be 4/5 = 0.8
+      const viewportAspect = viewportWidth / viewportHeight;
+      
+      let drawWidth, drawHeight, drawX, drawY;
+      
+      if (imgAspect > viewportAspect) {
+        // Image is wider relative to viewport - fit to width, center vertically
+        drawWidth = viewportWidth;
+        drawHeight = viewportWidth / imgAspect;
+        drawX = 0;
+        drawY = (viewportHeight - drawHeight) / 2 - 13; // Move up 13px total
+      } else {
+        // Image is taller relative to viewport - fit to height, center horizontally
+        drawHeight = viewportHeight;
+        drawWidth = viewportHeight * imgAspect;
+        drawX = (viewportWidth - drawWidth) / 2;
+        drawY = -13; // Move up 13px total
+      }
+      
+      ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
       ctx.restore();
 
       // Draw template skeleton on the overlay if enabled
@@ -177,11 +196,12 @@ export function HUDOverlay({
           const end = templateLandmarks[endIdx];
 
           if (start && end && start.visibility && start.visibility > 0.1 && end.visibility && end.visibility > 0.1) {
-            // Landmarks are normalized (0-1), so multiply by viewport dimensions
-            const startX = start.x * viewportWidth;
-            const startY = start.y * viewportHeight;
-            const endX = end.x * viewportWidth;
-            const endY = end.y * viewportHeight;
+            // Landmarks are normalized (0-1) relative to the original image
+            // Scale to match the drawn image dimensions
+            const startX = drawX + (start.x * drawWidth);
+            const startY = drawY + (start.y * drawHeight);
+            const endX = drawX + (end.x * drawWidth);
+            const endY = drawY + (end.y * drawHeight);
             
             ctx.beginPath();
             ctx.moveTo(startX, startY);
@@ -194,9 +214,10 @@ export function HUDOverlay({
         // Draw keypoints
         templateLandmarks.forEach((lm, idx) => {
           if (lm && lm.visibility && lm.visibility > 0.1) {
-            // Landmarks are normalized (0-1), so multiply by viewport dimensions
-            const x = lm.x * viewportWidth;
-            const y = lm.y * viewportHeight;
+            // Landmarks are normalized (0-1) relative to the original image
+            // Scale to match the drawn image dimensions
+            const x = drawX + (lm.x * drawWidth);
+            const y = drawY + (lm.y * drawHeight);
             
             if (idx <= POSE_LANDMARKS.RIGHT_EAR) {
               ctx.fillStyle = '#FFFF00';
@@ -227,9 +248,36 @@ export function HUDOverlay({
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
     ctx.lineWidth = 1;
 
-    // Center crosshair
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
+    // Center crosshair - recentered to match template overlay position (moved up 13px)
+    let centerX, centerY;
+    if (showTemplateOverlay && templateImageRef.current) {
+      const img = templateImageRef.current;
+      const imgAspect = img.width / img.height;
+      const viewportAspect = viewportWidth / viewportHeight;
+      
+      let drawWidth, drawHeight, drawX, drawY;
+      
+      if (imgAspect > viewportAspect) {
+        drawWidth = viewportWidth;
+        drawHeight = viewportWidth / imgAspect;
+        drawX = 0;
+        drawY = (viewportHeight - drawHeight) / 2 - 13; // Move up 13px total
+      } else {
+        drawHeight = viewportHeight;
+        drawWidth = viewportHeight * imgAspect;
+        drawX = (viewportWidth - drawWidth) / 2;
+        drawY = -13; // Move up 13px total
+      }
+      
+      // Center of the template image
+      centerX = drawX + drawWidth / 2;
+      centerY = drawY + drawHeight / 2;
+    } else {
+      // Default center if no template overlay
+      centerX = canvas.width / 2;
+      centerY = canvas.height / 2;
+    }
+    
     const crosshairSize = 20;
 
     ctx.beginPath();
@@ -382,6 +430,13 @@ export function HUDOverlay({
 
     if (!guidance) return;
 
+    // Calculate safe area for hints, avoiding top and bottom bars (estimated: top ~80px, bottom ~150px)
+    const topBarHeight = 80;
+    const bottomBarHeight = 150;
+    const safeAreaTop = topBarHeight + 20;
+    const safeAreaBottom = canvas.height - bottomBarHeight - 20;
+    const safeCenterY = safeAreaTop + (safeAreaBottom - safeAreaTop) / 2;
+
     // Draw center offset arrow
     if (Math.abs(guidance.centerOffset) > 0.1) {
       const arrowX = centerX + (guidance.centerOffset * (canvas.width * 0.3));
@@ -390,26 +445,28 @@ export function HUDOverlay({
 
       ctx.fillStyle = 'rgba(255, 100, 100, 0.8)';
       ctx.beginPath();
-      ctx.moveTo(arrowX, centerY);
-      ctx.lineTo(arrowX - direction * arrowSize, centerY - arrowSize / 2);
-      ctx.lineTo(arrowX - direction * arrowSize, centerY + arrowSize / 2);
+      ctx.moveTo(arrowX, safeCenterY);
+      ctx.lineTo(arrowX - direction * arrowSize, safeCenterY - arrowSize / 2);
+      ctx.lineTo(arrowX - direction * arrowSize, safeCenterY + arrowSize / 2);
       ctx.closePath();
       ctx.fill();
 
-      // Text hint
-      ctx.fillStyle = 'white';
+      // Text hint - position above arrow, ensuring it's below top bar
+      const textY = Math.max(safeCenterY - arrowSize - 10, safeAreaTop + 20);
+      ctx.fillStyle = '#00FFFF'; // Neon blue
       const isMobile = isMobileDevice();
       ctx.font = isMobile ? '16px Arial, sans-serif' : '16px "Arial Narrow", Arial, sans-serif';
       const hintText = guidance.centerOffset > 0 ? 'Move right' : 'Move left';
       const hintMetrics = ctx.measureText(hintText);
       const hintX = arrowX - (hintMetrics.width * (isMobile ? 0.8 : 1) + (hintText.length - 1) * 0.5) / 2;
-      fillTextCompressed(ctx, hintText, hintX, centerY - arrowSize - 10, 0.5, isMobile);
+      fillTextCompressed(ctx, hintText, hintX, textY, 0.5, isMobile);
     }
 
-    // Draw distance hint
+    // Draw distance hint - position above bottom bar
     if (guidance.distance !== 'good') {
-      const hintY = canvas.height - 100;
-      ctx.fillStyle = 'rgba(255, 200, 0, 0.9)';
+      const bottomBarHeight = 150;
+      const hintY = canvas.height - bottomBarHeight - 30; // Position above bottom bar
+      ctx.fillStyle = '#00FFFF'; // Neon blue
       const isMobile = isMobileDevice();
       ctx.font = isMobile ? 'bold 18px Arial, sans-serif' : 'bold 18px "Arial Narrow", Arial, sans-serif';
       const distanceText = guidance.distance === 'too-close' ? 'Step back' : 'Step forward';
@@ -418,10 +475,11 @@ export function HUDOverlay({
       fillTextCompressed(ctx, distanceText, distanceX, hintY, 0.5, isMobile);
     }
 
-    // Draw tilt indicator
+    // Draw tilt indicator - position above bottom bar
     if (guidance.tilt > 5) {
       const tiltX = canvas.width / 2;
-      const tiltY = canvas.height - 60;
+      const bottomBarHeight = 150;
+      const tiltY = canvas.height - bottomBarHeight - 50; // Position above bottom bar
       const rotation = guidance.tilt * (Math.PI / 180);
 
       ctx.save();
@@ -435,14 +493,15 @@ export function HUDOverlay({
       ctx.stroke();
       ctx.restore();
 
-      // Level indicator text
-      ctx.fillStyle = 'white';
+      // Level indicator text - position below tilt line, but above bottom bar
+      const textY = Math.min(tiltY + 30, canvas.height - bottomBarHeight - 10);
+      ctx.fillStyle = '#00FFFF'; // Neon blue
       const isMobile = isMobileDevice();
       ctx.font = isMobile ? '12px Arial, sans-serif' : '12px "Arial Narrow", Arial, sans-serif';
       const levelText = 'Level';
       const levelMetrics = ctx.measureText(levelText);
       const levelX = tiltX - (levelMetrics.width * (isMobile ? 0.8 : 1) + (levelText.length - 1) * 0.5) / 2;
-      fillTextCompressed(ctx, levelText, levelX, tiltY + 30, 0.5, isMobile);
+      fillTextCompressed(ctx, levelText, levelX, textY, 0.5, isMobile);
     }
   }, [landmarks, guidance, template, videoElement, viewportWidth, viewportHeight, showSkeleton, templateImageUrl, templateLandmarks, showTemplateOverlay, showTemplateSkeleton]);
 

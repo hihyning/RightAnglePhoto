@@ -21,7 +21,7 @@ type View = 'camera' | 'gallery';
 // Cache for analyzed template results
 const templateAnalysisCache = new Map<string, {
   landmarks: Landmark[];
-  normalizedPose: NormalizedPose;
+  normalizedPose: any;
 }>();
 
 function App() {
@@ -38,6 +38,8 @@ function App() {
   const [templateLandmarks, setTemplateLandmarks] = useState<Landmark[] | null>(null);
   const [showTemplateSkeleton, setShowTemplateSkeleton] = useState(false);
   const [isAnalyzingTemplate, setIsAnalyzingTemplate] = useState(false);
+  const [templateImageDimensions, setTemplateImageDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [templateImageBounds, setTemplateImageBounds] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
 
   const { latestDetection, hasPerson, isLoading: isPoseLoading } = usePoseLandmarker(
     videoElement,
@@ -46,7 +48,7 @@ function App() {
 
   // Update viewport size on resize (debounced for mobile performance)
   useEffect(() => {
-    let resizeTimeout: NodeJS.Timeout;
+    let resizeTimeout: ReturnType<typeof setTimeout>;
     const handleResize = () => {
       clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(() => {
@@ -64,6 +66,56 @@ function App() {
   useEffect(() => {
     getAllPhotos().then(setPhotos).catch(console.error);
   }, []);
+
+  // Load template image to get natural dimensions
+  useEffect(() => {
+    if (selectedTemplateImage) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        setTemplateImageDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+      };
+      img.onerror = () => {
+        setTemplateImageDimensions(null);
+      };
+      img.src = selectedTemplateImage;
+    } else {
+      setTemplateImageDimensions(null);
+    }
+  }, [selectedTemplateImage]);
+
+  // Calculate template image bounds when dimensions or viewport change
+  useEffect(() => {
+    if (templateImageDimensions && showSkeleton && selectedTemplateImage) {
+      const imgAspect = templateImageDimensions.width / templateImageDimensions.height; // Should be 4/5 = 0.8
+      const viewportAspect = viewportSize.width / viewportSize.height;
+
+      let drawWidth, drawHeight, drawX, drawY;
+
+      if (imgAspect > viewportAspect) {
+        // Image is wider relative to viewport - fit to width, center vertically
+        drawWidth = viewportSize.width;
+        drawHeight = viewportSize.width / imgAspect;
+        drawX = 0;
+        drawY = (viewportSize.height - drawHeight) / 2;
+      } else {
+        // Image is taller relative to viewport - fit to height, center horizontally
+        drawHeight = viewportSize.height;
+        drawWidth = viewportSize.height * imgAspect;
+        drawX = (viewportSize.width - drawWidth) / 2;
+        drawY = 0;
+      }
+
+      setTemplateImageBounds({
+        top: drawY,
+        left: drawX,
+        width: drawWidth,
+        height: drawHeight,
+      });
+    } else {
+      setTemplateImageBounds(null);
+    }
+  }, [templateImageDimensions, viewportSize, showSkeleton, selectedTemplateImage]);
 
   // Set initial template image on mount, defer analysis for mobile stability
   useEffect(() => {
@@ -306,27 +358,30 @@ function App() {
       {view === 'camera' ? (
         <>
           {/* Top bar */}
-          <div className="top-bar">
+          <div 
+            className="top-bar"
+            style={
+              templateImageBounds && showSkeleton
+                ? {
+                    left: `${templateImageBounds.left}px`,
+                    width: `${templateImageBounds.width}px`,
+                    right: 'auto',
+                  }
+                : undefined
+            }
+          >
             <div className="top-bar-content">
               <h1 className="app-title">
                 <img src="/RAPL ICON word.png" alt="rightangle.photo" />
               </h1>
               <div className="top-bar-actions">
+                <div className="top-bar-spacer"></div>
                 <button
                   onClick={() => setShowSkeleton(!showSkeleton)}
                   className={`skeleton-toggle ${showSkeleton ? 'active' : ''}`}
                   title="Toggle skeleton preview"
                 >
                   Skeleton
-                </button>
-                <button
-                  onClick={() => setView('gallery')}
-                  className="gallery-button"
-                >
-                  Gallery
-                  {photos.length > 0 && (
-                    <span className="gallery-badge">{photos.length}</span>
-                  )}
                 </button>
               </div>
             </div>
@@ -376,7 +431,18 @@ function App() {
           </div>
 
           {/* Bottom controls */}
-          <div className="bottom-controls">
+          <div 
+            className="bottom-controls"
+            style={
+              templateImageBounds && showSkeleton
+                ? {
+                    left: `${templateImageBounds.left}px`,
+                    width: `${templateImageBounds.width}px`,
+                    right: 'auto',
+                  }
+                : undefined
+            }
+          >
             {/* Pose selector - hidden but kept for reference */}
             <div className="pose-selector">
               {poseTemplates.map((template) => (
@@ -394,10 +460,33 @@ function App() {
               ))}
             </div>
 
+            {/* Bottom-left pose gallery button */}
+            <div className="pose-gallery-button-container">
+              <button
+                onClick={() => setShowPoseGallery(true)}
+                className="pose-gallery-button"
+                aria-label="Open pose gallery"
+                title="Select pose template"
+              >
+                Poses
+              </button>
+            </div>
+
             {/* Shutter button */}
             <div className="shutter-container">
               <button
-                onClick={handleCapture}
+                onClick={(e) => {
+                  // Prevent default to avoid any browser default behaviors
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (!isCapturing && hasPerson && videoElement) {
+                    handleCapture();
+                  }
+                }}
+                onTouchStart={(e) => {
+                  // Prevent default touch behaviors that might interfere
+                  e.stopPropagation();
+                }}
                 disabled={!hasPerson || isCapturing}
                 className={
                   hasPerson && !isCapturing
@@ -408,31 +497,22 @@ function App() {
               />
             </div>
 
+            {/* Gallery button - bottom right */}
+            <div className="gallery-button-container">
+              <button
+                onClick={() => setView('gallery')}
+                className="gallery-button gallery-button-bottom"
+              >
+                Gallery
+                {photos.length > 0 && (
+                  <span className="gallery-badge">{photos.length}</span>
+                )}
+              </button>
+            </div>
+
             {/* Screen flash effect */}
             {isCapturing && <div className="screen-flash"></div>}
           </div>
-
-          {/* Bottom-left pose gallery button */}
-          <button
-            onClick={() => setShowPoseGallery(true)}
-            className="pose-gallery-icon-button"
-            aria-label="Open pose gallery"
-            title="Select pose template"
-          >
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 2v4M12 18v4M4 12h4M16 12h4M6.34 6.34l2.83 2.83M14.83 14.83l2.83 2.83M6.34 17.66l2.83-2.83M14.83 9.17l2.83-2.83" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          </button>
 
           {/* Pose Gallery Modal */}
           {showPoseGallery && (

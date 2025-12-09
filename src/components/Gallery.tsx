@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { type PhotoRecord, deletePhoto } from '../utils/indexedDB';
 
 interface GalleryProps {
@@ -9,6 +9,8 @@ interface GalleryProps {
 
 export function Gallery({ photos, onClose, onPhotoDelete }: GalleryProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoRecord | null>(null);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressPhotoRef = useRef<PhotoRecord | null>(null);
 
   const handleDownload = (photo: PhotoRecord) => {
     const link = document.createElement('a');
@@ -47,6 +49,24 @@ export function Gallery({ photos, onClose, onPhotoDelete }: GalleryProps) {
         setSelectedPhoto(null);
       }
     }
+  };
+
+  const handleLongPressStart = (photo: PhotoRecord, e: React.TouchEvent | React.MouseEvent) => {
+    longPressPhotoRef.current = photo;
+    longPressTimerRef.current = setTimeout(() => {
+      if (longPressPhotoRef.current) {
+        handleDownload(longPressPhotoRef.current);
+        longPressPhotoRef.current = null;
+      }
+    }, 500); // 500ms long press
+  };
+
+  const handleLongPressEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressPhotoRef.current = null;
   };
 
   if (selectedPhoto) {
@@ -114,6 +134,12 @@ export function Gallery({ photos, onClose, onPhotoDelete }: GalleryProps) {
               <button
                 key={photo.id}
                 onClick={() => setSelectedPhoto(photo)}
+                onTouchStart={(e) => handleLongPressStart(photo, e)}
+                onTouchEnd={handleLongPressEnd}
+                onTouchCancel={handleLongPressEnd}
+                onMouseDown={(e) => handleLongPressStart(photo, e)}
+                onMouseUp={handleLongPressEnd}
+                onMouseLeave={handleLongPressEnd}
                 className="gallery-thumbnail-button"
               >
                 <img

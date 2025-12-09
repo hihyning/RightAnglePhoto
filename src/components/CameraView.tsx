@@ -122,7 +122,6 @@ export function CameraView({ onVideoReady, isActive }: CameraViewProps) {
         playsInline
         muted
         className="camera-video"
-        style={{ transform: 'scaleX(-1)' }} // Mirror for selfie-like experience
       />
       {isLoading && (
         <div className="loading-overlay">
