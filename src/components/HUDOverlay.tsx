@@ -9,7 +9,7 @@ function fillTextWithLetterSpacing(ctx: CanvasRenderingContext2D, text: string, 
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
   
-  characters.forEach((char, index) => {
+  characters.forEach((char) => {
     ctx.fillText(char, currentX, y);
     const metrics = ctx.measureText(char);
     currentX += metrics.width + letterSpacing;

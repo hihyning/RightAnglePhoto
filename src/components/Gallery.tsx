@@ -9,7 +9,7 @@ interface GalleryProps {
 
 export function Gallery({ photos, onClose, onPhotoDelete }: GalleryProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoRecord | null>(null);
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressPhotoRef = useRef<PhotoRecord | null>(null);
 
   const handleDownload = (photo: PhotoRecord) => {
@@ -51,7 +51,7 @@ export function Gallery({ photos, onClose, onPhotoDelete }: GalleryProps) {
     }
   };
 
-  const handleLongPressStart = (photo: PhotoRecord, e: React.TouchEvent | React.MouseEvent) => {
+  const handleLongPressStart = (photo: PhotoRecord) => {
     longPressPhotoRef.current = photo;
     longPressTimerRef.current = setTimeout(() => {
       if (longPressPhotoRef.current) {
@@ -134,10 +134,10 @@ export function Gallery({ photos, onClose, onPhotoDelete }: GalleryProps) {
               <button
                 key={photo.id}
                 onClick={() => setSelectedPhoto(photo)}
-                onTouchStart={(e) => handleLongPressStart(photo, e)}
+                onTouchStart={() => handleLongPressStart(photo)}
                 onTouchEnd={handleLongPressEnd}
                 onTouchCancel={handleLongPressEnd}
-                onMouseDown={(e) => handleLongPressStart(photo, e)}
+                onMouseDown={() => handleLongPressStart(photo)}
                 onMouseUp={handleLongPressEnd}
                 onMouseLeave={handleLongPressEnd}
                 className="gallery-thumbnail-button"
