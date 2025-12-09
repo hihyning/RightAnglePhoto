@@ -1,4 +1,17 @@
 import { type Landmark, type NormalizedPose, POSE_LANDMARKS } from '../types/pose';
+import { PoseLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
+
+/**
+ * Detect if running on a mobile device
+ */
+export function isMobileDevice(): boolean {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    (typeof window !== 'undefined' && window.innerWidth <= 768);
+}
+
+// Cached MediaPipe landmarker instance for image analysis
+let cachedImageLandmarker: PoseLandmarker | null = null;
+let isInitializingLandmarker = false;
 
 /**
  * Normalize pose landmarks to center at hip midpoint and scale by body height
@@ -176,5 +189,116 @@ export function getPoseBoundingBox(landmarks: Landmark[]): {
     centerX: (minX + maxX) / 2,
     centerY: (minY + maxY) / 2,
   };
+}
+
+/**
+ * Get or create cached MediaPipe landmarker instance for image analysis
+ */
+async function getImageLandmarker(): Promise<PoseLandmarker | null> {
+  // Return cached instance if available
+  if (cachedImageLandmarker) {
+    return cachedImageLandmarker;
+  }
+
+  // Prevent multiple simultaneous initializations
+  if (isInitializingLandmarker) {
+    // Wait for initialization to complete
+    let attempts = 0;
+    while (isInitializingLandmarker && attempts < 50) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      attempts++;
+      if (cachedImageLandmarker) {
+        return cachedImageLandmarker;
+      }
+    }
+    return null;
+  }
+
+  try {
+    isInitializingLandmarker = true;
+
+    const vision = await FilesetResolver.forVisionTasks(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+    );
+
+    const isMobile = isMobileDevice();
+    
+    const poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task`,
+        delegate: isMobile ? 'CPU' : 'GPU', // Use CPU on mobile for better stability
+      },
+      runningMode: 'IMAGE',
+      numPoses: 1,
+      minPoseDetectionConfidence: 0.5,
+      minPosePresenceConfidence: 0.5,
+      minTrackingConfidence: 0.5,
+    });
+
+    cachedImageLandmarker = poseLandmarker;
+    return poseLandmarker;
+  } catch (err) {
+    console.error('Failed to initialize image landmarker:', err);
+    return null;
+  } finally {
+    isInitializingLandmarker = false;
+  }
+}
+
+/**
+ * Analyze a static image with MediaPipe Pose Landmarker
+ * Returns normalized pose landmarks and raw landmarks
+ * Uses cached landmarker instance for performance
+ */
+export async function analyzeImagePose(imageUrl: string): Promise<{
+  landmarks: Landmark[];
+  normalizedPose: NormalizedPose;
+} | null> {
+  try {
+    const poseLandmarker = await getImageLandmarker();
+    if (!poseLandmarker) {
+      console.error('Failed to get landmarker instance');
+      return null;
+    }
+
+    // Load image with timeout
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    
+    await Promise.race([
+      new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = imageUrl;
+      }),
+      new Promise<void>((_, reject) => 
+        setTimeout(() => reject(new Error('Image load timeout')), 10000)
+      )
+    ]);
+
+    // Detect pose in image
+    const result = poseLandmarker.detect(img);
+
+    if (result.landmarks && result.landmarks.length > 0) {
+      const landmarks = result.landmarks[0].map((lm) => ({
+        x: lm.x,
+        y: lm.y,
+        z: lm.z,
+        visibility: lm.visibility,
+      }));
+
+      const normalizedPose = normalizePose(landmarks);
+
+      return {
+        landmarks,
+        normalizedPose,
+      };
+    }
+
+    return null;
+  } catch (err) {
+    console.error('Failed to analyze image pose:', err);
+    return null;
+  }
 }
 

@@ -2,7 +2,12 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { PoseLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { type PoseDetection } from '../types/pose';
 
-const TARGET_FPS = 12; // Throttle to ~12 FPS for performance
+// Detect mobile device
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+  (typeof window !== 'undefined' && window.innerWidth <= 768);
+
+// Reduce FPS on mobile for better performance
+const TARGET_FPS = isMobile ? 8 : 12; // 8 FPS on mobile, 12 FPS on desktop
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
 
 export function usePoseLandmarker(videoElement: HTMLVideoElement | null, isActive: boolean) {
@@ -31,7 +36,7 @@ export function usePoseLandmarker(videoElement: HTMLVideoElement | null, isActiv
         const poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
           baseOptions: {
             modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task`,
-            delegate: 'GPU',
+            delegate: isMobile ? 'CPU' : 'GPU', // Use CPU on mobile for better stability
           },
           runningMode: 'VIDEO',
           numPoses: 1,
